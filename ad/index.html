@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>智能记账日记 - NLP驱动的财务管理助手</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.7.0/p5.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@splidejs/splide@4.1.4/dist/js/splide.min.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/@splidejs/splide@4.1.4/dist/css/splide.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;700&family=Noto+Sans+SC:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #2C3E50;
+            --secondary-color: #3498DB;
+            --accent-color: #27AE60;
+            --warning-color: #F39C12;
+            --bg-light: #F8F9FA;
+        }
+        
+        body {
+            font-family: 'Noto Sans SC', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        
+        .hero-title {
+            font-family: 'Noto Serif SC', serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .glass-card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+        
+        .floating-animation {
+            animation: float 6s ease-in-out infinite;
+        }
+        
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-20px); }
+        }
+        
+        .gradient-text {
+            background: linear-gradient(135deg, var(--secondary-color), var(--accent-color));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .hover-lift {
+            transition: all 0.3s ease;
+        }
+        
+        .hover-lift:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+        }
+        
+        .pulse-animation {
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+        
+        .category-chip {
+            transition: all 0.2s ease;
+        }
+        
+        .category-chip:hover {
+            transform: scale(1.05);
+        }
+        
+        .category-chip.active {
+            background: var(--secondary-color);
+            color: white;
+        }
+        
+        #p5-background {
+            position: fixed;
+            top: 0;
+            left: 0;
+            z-index: -1;
+        }
+        
+        .scroll-reveal {
+            opacity: 0;
+            transform: translateY(30px);
+            transition: all 0.6s ease;
+        }
+        
+        .scroll-reveal.revealed {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    </style>
+</head>
+<body class="overflow-x-hidden">
+    <!-- P5.js Background Canvas -->
+    <div id="p5-background"></div>
+    
+    <!-- Navigation -->
+    <nav class="fixed top-0 w-full z-50 glass-card">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16">
+                <div class="flex items-center">
+                    <div class="flex-shrink-0">
+                        <h1 class="text-xl font-bold gradient-text">💰 智能记账</h1>
+                    </div>
+                </div>
+                <div class="hidden md:block">
+                    <div class="ml-10 flex items-baseline space-x-4">
+                        <a href="index.html" class="px-3 py-2 rounded-md text-sm font-medium text-white bg-blue-500">首页</a>
+                        <a href="accounting.html" class="px-3 py-2 rounded-md text-sm font-medium text-gray-700 hover:text-blue-600 hover:bg-gray-100 transition-colors">记账</a>
+                        <a href="diary.html" class="px-3 py-2 rounded-md text-sm font-medium text-gray-700 hover:text-blue-600 hover:bg-gray-100 transition-colors">日记</a>
+                        <a href="analytics.html" class="px-3 py-2 rounded-md text-sm font-medium text-gray-700 hover:text-blue-600 hover:bg-gray-100 transition-colors">分析</a>
+                    </div>
+                </div>
+                <div class="md:hidden">
+                    <button id="mobile-menu-btn" class="text-gray-700 hover:text-blue-600">
+                        <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+        <!-- Mobile menu -->
+        <div id="mobile-menu" class="md:hidden hidden">
+            <div class="px-2 pt-2 pb-3 space-y-1 sm:px-3 bg-white border-t">
+                <a href="index.html" class="block px-3 py-2 rounded-md text-base font-medium text-white bg-blue-500">首页</a>
+                <a href="accounting.html" class="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-blue-600">记账</a>
+                <a href="diary.html" class="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-blue-600">日记</a>
+                <a href="analytics.html" class="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-blue-600">分析</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="pt-20 pb-12">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-12">
+                <h1 class="text-4xl md:text-6xl font-bold hero-title mb-6 floating-animation">
+                    智能记账日记
+                </h1>
+                <p class="text-xl md:text-2xl text-white mb-8 max-w-3xl mx-auto leading-relaxed">
+                    基于自然语言处理技术，让记账变得像聊天一样简单。说出你的花费，AI自动帮你记录、分类、分析。
+                </p>
+                <div class="flex flex-col sm:flex-row gap-4 justify-center">
+                    <button onclick="scrollToFeature()" class="px-8 py-3 bg-white text-blue-600 rounded-lg font-semibold hover-lift">
+                        开始体验
+                    </button>
+                    <button onclick="window.location.href='analytics.html'" class="px-8 py-3 bg-transparent text-white border-2 border-white rounded-lg font-semibold hover:bg-white hover:text-blue-600 transition-all">
+                        查看分析
+                    </button>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Smart Accounting Panel -->
+    <section id="accounting-panel" class="py-16">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-12 scroll-reveal">
+                <h2 class="text-3xl md:text-4xl font-bold text-white mb-4">智能记账面板</h2>
+                <p class="text-xl text-gray-200 max-w-2xl mx-auto">
+                    用自然语言记录每一笔收支，AI智能解析、自动分类、实时统计
+                </p>
+            </div>
+            
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <!-- Natural Language Input -->
+                <div class="lg:col-span-1 scroll-reveal">
+                    <div class="glass-card rounded-2xl p-8 hover-lift h-full">
+                        <h3 class="text-2xl font-semibold text-gray-800 mb-6 flex items-center">
+                            <span class="w-8 h-8 bg-blue-500 text-white rounded-full flex items-center justify-center text-sm mr-3">1</span>
+                            自然语言输入
+                        </h3>
+                        <div class="space-y-4">
+                            <textarea 
+                                id="natural-input" 
+                                placeholder="试试说：今天午餐花了35元，地铁费8块，收到工资5000元..."
+                                class="w-full h-32 p-4 border border-gray-200 rounded-lg resize-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-700"
+                            ></textarea>
+                            <button 
+                                onclick="parseInput()" 
+                                class="w-full bg-gradient-to-r from-blue-500 to-purple-600 text-white py-3 rounded-lg font-semibold hover:from-blue-600 hover:to-purple-700 transition-all pulse-animation"
+                            >
+                                智能解析
+                            </button>
+                        </div>
+                        <div class="mt-6">
+                            <h4 class="text-sm font-medium text-gray-600 mb-3">示例输入：</h4>
+                            <div class="space-y-2 text-sm text-gray-500">
+                                <div class="p-2 bg-gray-50 rounded cursor-pointer hover:bg-gray-100" onclick="setExample('今天午餐花了35元')">今天午餐花了35元</div>
+                                <div class="p-2 bg-gray-50 rounded cursor-pointer hover:bg-gray-100" onclick="setExample('地铁费8块钱')">地铁费8块钱</div>
+                                <div class="p-2 bg-gray-50 rounded cursor-pointer hover:bg-gray-100" onclick="setExample('收到工资5000元')">收到工资5000元</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Parsed Result Display -->
+                <div class="lg:col-span-1 scroll-reveal">
+                    <div class="glass-card rounded-2xl p-8 hover-lift h-full">
+                        <h3 class="text-2xl font-semibold text-gray-800 mb-6 flex items-center">
+                            <span class="w-8 h-8 bg-green-500 text-white rounded-full flex items-center justify-center text-sm mr-3">2</span>
+                            解析结果
+                        </h3>
+                        <div id="parsed-result" class="space-y-4">
+                            <div class="text-center text-gray-400 py-8">
+                                <svg class="w-16 h-16 mx-auto mb-4 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                                </svg>
+                                <p>输入内容后将自动解析</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Quick Category Selector -->
+                <div class="lg:col-span-1 scroll-reveal">
+                    <div class="glass-card rounded-2xl p-8 hover-lift h-full">
+                        <h3 class="text-2xl font-semibold text-gray-800 mb-6 flex items-center">
+                            <span class="w-8 h-8 bg-orange-500 text-white rounded-full flex items-center justify-center text-sm mr-3">3</span>
+                            快速分类
+                        </h3>
+                        <div class="grid grid-cols-2 gap-3" id="category-selector">
+                            <!-- Categories will be populated by JavaScript -->
+                        </div>
+                        <div class="mt-6 pt-6 border-t border-gray-200">
+                            <button 
+                                id="save-btn" 
+                                onclick="saveTransaction()" 
+                                class="w-full bg-green-500 text-white py-3 rounded-lg font-semibold hover:bg-green-600 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed" 
+                                disabled
+                            >
+                                保存记录
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Today's Overview -->
+    <section class="py-16">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-12 scroll-reveal">
+                <h2 class="text-3xl md:text-4xl font-bold text-white mb-4">今日概览</h2>
+                <p class="text-xl text-gray-200">实时掌握今天的收支情况</p>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
+                <div class="glass-card rounded-2xl p-6 text-center hover-lift scroll-reveal">
+                    <div class="text-3xl mb-3">💰</div>
+                    <h3 class="text-lg font-semibold text-gray-700 mb-2">今日收入</h3>
+                    <p class="text-2xl font-bold text-green-600" id="today-income">¥0</p>
+                </div>
+                <div class="glass-card rounded-2xl p-6 text-center hover-lift scroll-reveal">
+                    <div class="text-3xl mb-3">💸</div>
+                    <h3 class="text-lg font-semibold text-gray-700 mb-2">今日支出</h3>
+                    <p class="text-2xl font-bold text-red-500" id="today-expense">¥0</p>
+                </div>
+                <div class="glass-card rounded-2xl p-6 text-center hover-lift scroll-reveal">
+                    <div class="text-3xl mb-3">📊</div>
+                    <h3 class="text-lg font-semibold text-gray-700 mb-2">净收支</h3>
+                    <p class="text-2xl font-bold text-blue-600" id="today-balance">¥0</p>
+                </div>
+                <div class="glass-card rounded-2xl p-6 text-center hover-lift scroll-reveal">
+                    <div class="text-3xl mb-3">📝</div>
+                    <h3 class="text-lg font-semibold text-gray-700 mb-2">记录数</h3>
+                    <p class="text-2xl font-bold text-purple-600" id="today-count">0</p>
+                </div>
+            </div>
+
+            <!-- Today's Chart -->
+            <div class="glass-card rounded-2xl p-8 scroll-reveal">
+                <h3 class="text-2xl font-semibold text-gray-800 mb-6 text-center">今日收支分布</h3>
+                <div id="today-chart" style="height: 300px;"></div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <section class="py-16">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-12 scroll-reveal">
+                <h2 class="text-3xl md:text-4xl font-bold text-white mb-4">核心功能</h2>
+                <p class="text-xl text-gray-200">让财务管理变得简单、智能、有趣</p>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                <div class="glass-card rounded-2xl p-8 text-center hover-lift scroll-reveal">
+                    <div class="w-16 h-16 bg-blue-500 rounded-full flex items-center justify-center mx-auto mb-6">
+                        <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z"></path>
+                        </svg>
+                    </div>
+                    <h3 class="text-xl font-semibold text-gray-800 mb-4">自然语言处理</h3>
+                    <p class="text-gray-600 leading-relaxed">
+                        用日常语言描述收支，AI自动理解、提取关键信息并分类。无需学习复杂格式，说话就能记账。
+                    </p>
+                </div>
+                
+                <div class="glass-card rounded-2xl p-8 text-center hover-lift scroll-reveal">
+                    <div class="w-16 h-16 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-6">
+                        <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path>
+                        </svg>
+                    </div>
+                    <h3 class="text-xl font-semibold text-gray-800 mb-4">智能日记生成</h3>
+                    <p class="text-gray-600 leading-relaxed">
+                        基于每日记账记录和心情标签，AI自动生成日记草稿。记录生活点滴，让财务管理更有温度。
+                    </p>
+                </div>
+                
+                <div class="glass-card rounded-2xl p-8 text-center hover-lift scroll-reveal">
+                    <div class="w-16 h-16 bg-purple-500 rounded-full flex items-center justify-center mx-auto mb-6">
+                        <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                        </svg>
+                    </div>
+                    <h3 class="text-xl font-semibold text-gray-800 mb-4">数据可视化分析</h3>
+                    <p class="text-gray-600 leading-relaxed">
+                        丰富的图表展示收支趋势、分类占比、月度对比。直观了解财务状况，做出明智的消费决策。
+                    </p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Recent Transactions -->
+    <section class="py-16">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-12 scroll-reveal">
+                <h2 class="text-3xl md:text-4xl font-bold text-white mb-4">最近记录</h2>
+                <p class="text-xl text-gray-200">查看最近的记账记录</p>
+            </div>
+            
+            <div class="glass-card rounded-2xl p-8 scroll-reveal">
+                <div class="flex justify-between items-center mb-6">
+                    <h3 class="text-xl font-semibold text-gray-800">最近30条记录</h3>
+                    <a href="accounting.html" class="text-blue-600 hover:text-blue-800 font-medium">查看全部 →</a>
+                </div>
+                <div id="recent-transactions" class="space-y-3">
+                    <!-- Transactions will be populated by JavaScript -->
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="py-8 border-t border-white/20">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center">
+                <p class="text-gray-300">&copy; 2026 智能记账日记. 让财务管理变得简单、智能、有趣.</p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Notification -->
+    <div id="notification" class="fixed top-20 right-4 z-50 transform translate-x-full transition-transform duration-300">
+        <div class="bg-white rounded-lg shadow-lg p-4 min-w-80">
+            <div class="flex items-center">
+                <div class="flex-shrink-0">
+                    <svg class="h-5 w-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                    </svg>
+                </div>
+                <div class="ml-3">
+                    <p id="notification-text" class="text-sm font-medium text-gray-900"></p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="main.js"></script>
+</body>
+</html>

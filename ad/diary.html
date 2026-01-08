@@ -1,0 +1,1075 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>智能日记 - 智能记账日记</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;700&family=Noto+Sans+SC:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #2C3E50;
+            --secondary-color: #3498DB;
+            --accent-color: #27AE60;
+            --warning-color: #F39C12;
+            --bg-light: #F8F9FA;
+        }
+        
+        body {
+            font-family: 'Noto Sans SC', sans-serif;
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            min-height: 100vh;
+        }
+        
+        .glass-card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+        
+        .gradient-text {
+            background: linear-gradient(135deg, var(--secondary-color), var(--accent-color));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .hover-lift {
+            transition: all 0.3s ease;
+        }
+        
+        .hover-lift:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 24px rgba(0, 0, 0, 0.15);
+        }
+        
+        .mood-star {
+            font-size: 2rem;
+            color: #ddd;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        
+        .mood-star:hover,
+        .mood-star.active {
+            color: #ffd700;
+            transform: scale(1.1);
+        }
+        
+        .keyword-chip {
+            transition: all 0.2s ease;
+            cursor: pointer;
+        }
+        
+        .keyword-chip:hover {
+            transform: scale(1.05);
+        }
+        
+        .keyword-chip.selected {
+            background: var(--secondary-color);
+            color: white;
+        }
+        
+        .diary-entry {
+            transition: all 0.3s ease;
+        }
+        
+        .diary-entry:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+        }
+        
+        .calendar-day {
+            transition: all 0.2s ease;
+            cursor: pointer;
+        }
+        
+        .calendar-day:hover {
+            background-color: #e3f2fd;
+        }
+        
+        .calendar-day.has-diary {
+            background-color: #fff3e0;
+            border: 2px solid #ff9800;
+        }
+        
+        .calendar-day.selected {
+            background-color: #2196f3;
+            color: white;
+        }
+        
+        .scroll-reveal {
+            opacity: 0;
+            transform: translateY(30px);
+            transition: all 0.6s ease;
+        }
+        
+        .scroll-reveal.revealed {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        
+        .stats-card {
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.05));
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .diary-content {
+            font-family: 'Noto Serif SC', serif;
+            line-height: 1.8;
+        }
+        
+        .floating-hearts {
+            position: fixed;
+            pointer-events: none;
+            z-index: 1000;
+        }
+        
+        .heart {
+            position: absolute;
+            color: #ff69b4;
+            font-size: 20px;
+            animation: float-up 3s ease-out forwards;
+        }
+        
+        @keyframes float-up {
+            0% {
+                opacity: 1;
+                transform: translateY(0) rotate(0deg);
+            }
+            100% {
+                opacity: 0;
+                transform: translateY(-200px) rotate(360deg);
+            }
+        }
+    </style>
+</head>
+<body class="overflow-x-hidden">
+    <!-- Navigation -->
+    <nav class="fixed top-0 w-full z-50 glass-card">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16">
+                <div class="flex items-center">
+                    <div class="flex-shrink-0">
+                        <h1 class="text-xl font-bold gradient-text">💰 智能记账</h1>
+                    </div>
+                </div>
+                <div class="hidden md:block">
+                    <div class="ml-10 flex items-baseline space-x-4">
+                        <a href="index.html" class="px-3 py-2 rounded-md text-sm font-medium text-gray-700 hover:text-blue-600 hover:bg-gray-100 transition-colors">首页</a>
+                        <a href="accounting.html" class="px-3 py-2 rounded-md text-sm font-medium text-gray-700 hover:text-blue-600 hover:bg-gray-100 transition-colors">记账</a>
+                        <a href="diary.html" class="px-3 py-2 rounded-md text-sm font-medium text-white bg-blue-500">日记</a>
+                        <a href="analytics.html" class="px-3 py-2 rounded-md text-sm font-medium text-gray-700 hover:text-blue-600 hover:bg-gray-100 transition-colors">分析</a>
+                    </div>
+                </div>
+                <div class="md:hidden">
+                    <button id="mobile-menu-btn" class="text-gray-700 hover:text-blue-600">
+                        <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+        <!-- Mobile menu -->
+        <div id="mobile-menu" class="md:hidden hidden">
+            <div class="px-2 pt-2 pb-3 space-y-1 sm:px-3 bg-white border-t">
+                <a href="index.html" class="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-blue-600">首页</a>
+                <a href="accounting.html" class="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-blue-600">记账</a>
+                <a href="diary.html" class="block px-3 py-2 rounded-md text-base font-medium text-white bg-blue-500">日记</a>
+                <a href="analytics.html" class="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-blue-600">分析</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Header Section -->
+    <section class="pt-24 pb-8">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-8 scroll-reveal">
+                <h1 class="text-3xl md:text-4xl font-bold text-white mb-4">智能日记</h1>
+                <p class="text-xl text-gray-200">记录生活点滴，让财务管理更有温度</p>
+            </div>
+            
+            <!-- Stats Cards -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                <div class="stats-card rounded-2xl p-6 text-center hover-lift scroll-reveal">
+                    <div class="text-3xl mb-3">📝</div>
+                    <h3 class="text-lg font-semibold text-white mb-2">日记总数</h3>
+                    <p class="text-2xl font-bold text-pink-300" id="diary-count">0</p>
+                </div>
+                <div class="stats-card rounded-2xl p-6 text-center hover-lift scroll-reveal">
+                    <div class="text-3xl mb-3">⭐</div>
+                    <h3 class="text-lg font-semibold text-white mb-2">平均心情</h3>
+                    <p class="text-2xl font-bold text-yellow-300" id="avg-mood">0</p>
+                </div>
+                <div class="stats-card rounded-2xl p-6 text-center hover-lift scroll-reveal">
+                    <div class="text-3xl mb-3">📅</div>
+                    <h3 class="text-lg font-semibold text-white mb-2">连续天数</h3>
+                    <p class="text-2xl font-bold text-blue-300" id="streak-days">0</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Diary Generator -->
+    <section class="py-8">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="glass-card rounded-2xl p-8 scroll-reveal">
+                <h2 class="text-2xl font-semibold text-gray-800 mb-6 text-center">日记智能生成器</h2>
+                
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    <!-- Left Panel - Controls -->
+                    <div class="space-y-6">
+                        <!-- Date Selection -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-3">选择日期</label>
+                            <input 
+                                type="date" 
+                                id="diary-date" 
+                                class="w-full py-3 px-4 border border-gray-200 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+                            >
+                        </div>
+
+                        <!-- Mood Rating -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-3">今日心情</label>
+                            <div class="flex justify-center space-x-2" id="mood-rating">
+                                <span class="mood-star" data-rating="1">⭐</span>
+                                <span class="mood-star" data-rating="2">⭐</span>
+                                <span class="mood-star" data-rating="3">⭐</span>
+                                <span class="mood-star" data-rating="4">⭐</span>
+                                <span class="mood-star" data-rating="5">⭐</span>
+                            </div>
+                            <p class="text-center text-sm text-gray-500 mt-2" id="mood-text">点击星星评分</p>
+                        </div>
+
+                        <!-- Keywords -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-3">关键词标签</label>
+                            <div class="flex flex-wrap gap-2" id="keyword-tags">
+                                <span class="keyword-chip px-3 py-2 bg-gray-100 rounded-full text-sm" data-keyword="工作">💼 工作</span>
+                                <span class="keyword-chip px-3 py-2 bg-gray-100 rounded-full text-sm" data-keyword="生活">🏠 生活</span>
+                                <span class="keyword-chip px-3 py-2 bg-gray-100 rounded-full text-sm" data-keyword="学习">📚 学习</span>
+                                <span class="keyword-chip px-3 py-2 bg-gray-100 rounded-full text-sm" data-keyword="运动">🏃 运动</span>
+                                <span class="keyword-chip px-3 py-2 bg-gray-100 rounded-full text-sm" data-keyword="社交">👥 社交</span>
+                                <span class="keyword-chip px-3 py-2 bg-gray-100 rounded-full text-sm" data-keyword="旅行">✈️ 旅行</span>
+                                <span class="keyword-chip px-3 py-2 bg-gray-100 rounded-full text-sm" data-keyword="美食">🍜 美食</span>
+                                <span class="keyword-chip px-3 py-2 bg-gray-100 rounded-full text-sm" data-keyword="购物">🛍️ 购物</span>
+                                <span class="keyword-chip px-3 py-2 bg-gray-100 rounded-full text-sm" data-keyword="娱乐">🎬 娱乐</span>
+                                <span class="keyword-chip px-3 py-2 bg-gray-100 rounded-full text-sm" data-keyword="健康">🏥 健康</span>
+                            </div>
+                        </div>
+
+                        <!-- Generate Button -->
+                        <button 
+                            onclick="generateDiary()" 
+                            class="w-full bg-gradient-to-r from-pink-500 to-purple-600 text-white py-4 rounded-lg font-semibold hover:from-pink-600 hover:to-purple-700 transition-all text-lg"
+                        >
+                            ✨ AI生成日记
+                        </button>
+                    </div>
+
+                    <!-- Right Panel - Generated Content -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-3">日记内容</label>
+                        <div class="relative">
+                            <textarea 
+                                id="diary-content" 
+                                placeholder="选择日期和心情后，点击AI生成日记按钮..."
+                                class="w-full h-80 p-4 border border-gray-200 rounded-lg resize-none focus:ring-2 focus:ring-pink-500 focus:border-transparent diary-content text-gray-700"
+                            ></textarea>
+                            <div class="absolute bottom-4 right-4">
+                                <button 
+                                    onclick="saveDiary()" 
+                                    id="save-diary-btn"
+                                    class="bg-green-500 text-white px-6 py-2 rounded-lg font-semibold hover:bg-green-600 transition-colors disabled:bg-gray-300"
+                                    disabled
+                                >
+                                    保存日记
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <!-- Word Count -->
+                        <div class="mt-2 text-sm text-gray-500 text-right">
+                            字数: <span id="word-count">0</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Calendar and History -->
+    <section class="py-8">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <!-- Calendar -->
+                <div class="lg:col-span-1">
+                    <div class="glass-card rounded-2xl p-6 scroll-reveal">
+                        <h3 class="text-xl font-semibold text-gray-800 mb-4">日记日历</h3>
+                        <div id="diary-calendar">
+                            <!-- Calendar will be populated by JavaScript -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Recent Diaries -->
+                <div class="lg:col-span-2">
+                    <div class="glass-card rounded-2xl p-6 scroll-reveal">
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 class="text-xl font-semibold text-gray-800">最近日记</h3>
+                            <button onclick="loadAllDiaries()" class="text-blue-600 hover:text-blue-800 font-medium">查看全部 →</button>
+                        </div>
+                        <div id="recent-diaries" class="space-y-4">
+                            <!-- Recent diaries will be populated by JavaScript -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Mood Trend Chart -->
+    <section class="py-8">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="glass-card rounded-2xl p-8 scroll-reveal">
+                <h3 class="text-2xl font-semibold text-gray-800 mb-6 text-center">心情趋势</h3>
+                <div id="mood-chart" style="height: 300px;"></div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="py-8 border-t border-white/20">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center">
+                <p class="text-gray-300">&copy; 2026 智能记账日记. 让财务管理变得简单、智能、有趣.</p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Notification -->
+    <div id="notification" class="fixed top-20 right-4 z-50 transform translate-x-full transition-transform duration-300">
+        <div class="bg-white rounded-lg shadow-lg p-4 min-w-80">
+            <div class="flex items-center">
+                <div class="flex-shrink-0">
+                    <svg class="h-5 w-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                    </svg>
+                </div>
+                <div class="ml-3">
+                    <p id="notification-text" class="text-sm font-medium text-gray-900"></p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Floating Hearts Container -->
+    <div class="floating-hearts" id="floating-hearts"></div>
+
+    <script>
+        // Diary Page JavaScript
+        let allTransactions = [];
+        let allDiaries = [];
+        let currentMood = 0;
+        let selectedKeywords = [];
+        let selectedDate = '';
+        let moodChart = null;
+
+        // Initialize page
+        document.addEventListener('DOMContentLoaded', function() {
+            initializePage();
+        });
+
+        function initializePage() {
+            setupMobileMenu();
+            setupScrollReveal();
+            loadData();
+            setupMoodRating();
+            setupKeywordTags();
+            setupDateInput();
+            updateStatistics();
+            renderCalendar();
+            renderRecentDiaries();
+            initializeMoodChart();
+            setupTextArea();
+        }
+
+        // Mobile menu setup
+        function setupMobileMenu() {
+            const mobileMenuBtn = document.getElementById('mobile-menu-btn');
+            const mobileMenu = document.getElementById('mobile-menu');
+            
+            if (mobileMenuBtn && mobileMenu) {
+                mobileMenuBtn.addEventListener('click', () => {
+                    mobileMenu.classList.toggle('hidden');
+                });
+            }
+        }
+
+        // Scroll reveal animation
+        function setupScrollReveal() {
+            const observerOptions = {
+                threshold: 0.1,
+                rootMargin: '0px 0px -50px 0px'
+            };
+            
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        entry.target.classList.add('revealed');
+                    }
+                });
+            }, observerOptions);
+            
+            document.querySelectorAll('.scroll-reveal').forEach(el => {
+                observer.observe(el);
+            });
+        }
+
+        // Load data from localStorage
+        function loadData() {
+            const transactionsStored = localStorage.getItem('transactions');
+            const diariesStored = localStorage.getItem('diaries');
+            
+            allTransactions = transactionsStored ? JSON.parse(transactionsStored) : [];
+            allDiaries = diariesStored ? JSON.parse(diariesStored) : [];
+        }
+
+        // Setup mood rating
+        function setupMoodRating() {
+            const moodStars = document.querySelectorAll('.mood-star');
+            const moodText = document.getElementById('mood-text');
+            
+            const moodTexts = ['', '有点糟糕', '不太开心', '一般般', '还不错', '非常开心'];
+            
+            moodStars.forEach((star, index) => {
+                star.addEventListener('click', () => {
+                    currentMood = index + 1;
+                    updateMoodDisplay();
+                    moodText.textContent = moodTexts[currentMood];
+                    
+                    // Add floating hearts
+                    if (currentMood >= 4) {
+                        createFloatingHearts();
+                    }
+                });
+                
+                star.addEventListener('mouseenter', () => {
+                    highlightStars(index + 1);
+                });
+            });
+            
+            document.getElementById('mood-rating').addEventListener('mouseleave', () => {
+                updateMoodDisplay();
+            });
+        }
+
+        // Highlight stars
+        function highlightStars(rating) {
+            const moodStars = document.querySelectorAll('.mood-star');
+            moodStars.forEach((star, index) => {
+                if (index < rating) {
+                    star.classList.add('active');
+                } else {
+                    star.classList.remove('active');
+                }
+            });
+        }
+
+        // Update mood display
+        function updateMoodDisplay() {
+            highlightStars(currentMood);
+        }
+
+        // Setup keyword tags
+        function setupKeywordTags() {
+            const keywordTags = document.querySelectorAll('.keyword-chip');
+            
+            keywordTags.forEach(tag => {
+                tag.addEventListener('click', () => {
+                    const keyword = tag.getAttribute('data-keyword');
+                    
+                    if (tag.classList.contains('selected')) {
+                        tag.classList.remove('selected');
+                        selectedKeywords = selectedKeywords.filter(k => k !== keyword);
+                    } else {
+                        tag.classList.add('selected');
+                        selectedKeywords.push(keyword);
+                    }
+                });
+            });
+        }
+
+        // Setup date input
+        function setupDateInput() {
+            const dateInput = document.getElementById('diary-date');
+            const today = new Date().toISOString().split('T')[0];
+            dateInput.value = today;
+            selectedDate = today;
+            
+            dateInput.addEventListener('change', (e) => {
+                selectedDate = e.target.value;
+                loadExistingDiary();
+            });
+            
+            // Load existing diary for today
+            loadExistingDiary();
+        }
+
+        // Load existing diary for selected date
+        function loadExistingDiary() {
+            const existingDiary = allDiaries.find(d => d.date === selectedDate);
+            
+            if (existingDiary) {
+                document.getElementById('diary-content').value = existingDiary.content;
+                currentMood = existingDiary.mood;
+                selectedKeywords = [...existingDiary.keywords];
+                
+                updateMoodDisplay();
+                updateKeywordSelection();
+                updateWordCount();
+                document.getElementById('save-diary-btn').disabled = false;
+            } else {
+                document.getElementById('diary-content').value = '';
+                currentMood = 0;
+                selectedKeywords = [];
+                
+                updateMoodDisplay();
+                updateKeywordSelection();
+                updateWordCount();
+                document.getElementById('save-diary-btn').disabled = true;
+            }
+        }
+
+        // Update keyword selection
+        function updateKeywordSelection() {
+            const keywordTags = document.querySelectorAll('.keyword-chip');
+            
+            keywordTags.forEach(tag => {
+                const keyword = tag.getAttribute('data-keyword');
+                if (selectedKeywords.includes(keyword)) {
+                    tag.classList.add('selected');
+                } else {
+                    tag.classList.remove('selected');
+                }
+            });
+        }
+
+        // Generate diary
+        function generateDiary() {
+            if (!currentMood) {
+                showNotification('请先选择今日心情', 'error');
+                return;
+            }
+            
+            if (selectedKeywords.length === 0) {
+                showNotification('请至少选择一个关键词', 'error');
+                return;
+            }
+            
+            // Get transactions for selected date
+            const dayTransactions = allTransactions.filter(t => t.date === selectedDate);
+            
+            // Generate diary content
+            const diaryContent = generateDiaryContent(currentMood, selectedKeywords, dayTransactions);
+            
+            // Animate text appearance
+            const textarea = document.getElementById('diary-content');
+            textarea.value = '';
+            
+            let index = 0;
+            const typeWriter = () => {
+                if (index < diaryContent.length) {
+                    textarea.value += diaryContent.charAt(index);
+                    index++;
+                    setTimeout(typeWriter, 30);
+                } else {
+                    updateWordCount();
+                    document.getElementById('save-diary-btn').disabled = false;
+                }
+            };
+            
+            typeWriter();
+            
+            // Add success animation
+            anime({
+                targets: '#diary-content',
+                scale: [0.98, 1],
+                duration: 500,
+                easing: 'easeOutQuad'
+            });
+        }
+
+        // Generate diary content
+        function generateDiaryContent(mood, keywords, transactions) {
+            const moodTexts = {
+                1: '今天心情有点低落',
+                2: '今天过得不太顺利',
+                3: '今天是平凡的一天',
+                4: '今天心情不错',
+                5: '今天非常开心'
+            };
+            
+            let content = `${moodTexts[mood]}。`;
+            
+            // Add keyword-related content
+            if (keywords.includes('工作')) {
+                content += '工作上有些事情需要处理，';
+            }
+            if (keywords.includes('学习')) {
+                content += '今天也抽时间学习了一些新知识，';
+            }
+            if (keywords.includes('运动')) {
+                content += '保持了运动的习惯，感觉身体状态很好，';
+            }
+            if (keywords.includes('美食')) {
+                content += '今天品尝了美味的食物，';
+            }
+            if (keywords.includes('社交')) {
+                content += '和朋友见面聊天，感觉很愉快，';
+            }
+            
+            // Add transaction-related content
+            if (transactions.length > 0) {
+                content += '\\n\\n今天的花费情况：';
+                let totalExpense = 0;
+                let totalIncome = 0;
+                
+                transactions.forEach(t => {
+                    if (t.type === 'expense') {
+                        content += `\\n- ${t.description}: ¥${t.amount.toFixed(2)}`;
+                        totalExpense += t.amount;
+                    } else {
+                        totalIncome += t.amount;
+                    }
+                });
+                
+                if (totalExpense > 0) {
+                    content += `\\n总支出: ¥${totalExpense.toFixed(2)}`;
+                }
+                if (totalIncome > 0) {
+                    content += `\\n总收入: ¥${totalIncome.toFixed(2)}`;
+                }
+            }
+            
+            // Add reflection based on mood
+            if (mood >= 4) {
+                content += '\\n\\n今天是很充实的一天，希望明天也能保持这样的好心情。';
+            } else if (mood <= 2) {
+                content += '\\n\\n虽然今天有些不如意，但相信明天会更好。';
+            } else {
+                content += '\\n\\n平平淡淡也是生活的一部分，珍惜当下。';
+            }
+            
+            return content;
+        }
+
+        // Save diary
+        function saveDiary() {
+            const content = document.getElementById('diary-content').value.trim();
+            
+            if (!content) {
+                showNotification('日记内容不能为空', 'error');
+                return;
+            }
+            
+            if (!currentMood) {
+                showNotification('请选择今日心情', 'error');
+                return;
+            }
+            
+            const diaryData = {
+                id: generateId(),
+                date: selectedDate,
+                mood: currentMood,
+                keywords: selectedKeywords,
+                content: content,
+                wordCount: content.length,
+                createdAt: new Date().toISOString()
+            };
+            
+            // Check if diary for this date already exists
+            const existingIndex = allDiaries.findIndex(d => d.date === selectedDate);
+            
+            if (existingIndex !== -1) {
+                diaryData.id = allDiaries[existingIndex].id;
+                allDiaries[existingIndex] = diaryData;
+            } else {
+                allDiaries.unshift(diaryData);
+            }
+            
+            localStorage.setItem('diaries', JSON.stringify(allDiaries));
+            
+            updateStatistics();
+            renderCalendar();
+            renderRecentDiaries();
+            updateMoodChart();
+            
+            showNotification('日记保存成功！', 'success');
+            
+            // Add save animation
+            anime({
+                targets: '#save-diary-btn',
+                scale: [1, 0.95, 1],
+                duration: 200,
+                easing: 'easeInOutQuad'
+            });
+        }
+
+        // Setup text area
+        function setupTextArea() {
+            const textarea = document.getElementById('diary-content');
+            textarea.addEventListener('input', updateWordCount);
+        }
+
+        // Update word count
+        function updateWordCount() {
+            const content = document.getElementById('diary-content').value;
+            document.getElementById('word-count').textContent = content.length;
+        }
+
+        // Update statistics
+        function updateStatistics() {
+            document.getElementById('diary-count').textContent = allDiaries.length;
+            
+            if (allDiaries.length > 0) {
+                const avgMood = allDiaries.reduce((sum, d) => sum + d.mood, 0) / allDiaries.length;
+                document.getElementById('avg-mood').textContent = avgMood.toFixed(1);
+                
+                const streak = calculateStreak();
+                document.getElementById('streak-days').textContent = streak;
+            } else {
+                document.getElementById('avg-mood').textContent = '0';
+                document.getElementById('streak-days').textContent = '0';
+            }
+        }
+
+        // Calculate streak
+        function calculateStreak() {
+            if (allDiaries.length === 0) return 0;
+            
+            const sortedDiaries = allDiaries.sort((a, b) => new Date(b.date) - new Date(a.date));
+            const today = new Date();
+            let streak = 0;
+            let currentDate = new Date(today);
+            
+            for (let i = 0; i < sortedDiaries.length; i++) {
+                const diaryDate = new Date(sortedDiaries[i].date);
+                const diffDays = Math.floor((currentDate - diaryDate) / (1000 * 60 * 60 * 24));
+                
+                if (diffDays === streak) {
+                    streak++;
+                    currentDate = new Date(diaryDate);
+                    currentDate.setDate(currentDate.getDate() - 1);
+                } else {
+                    break;
+                }
+            }
+            
+            return streak;
+        }
+
+        // Render calendar
+        function renderCalendar() {
+            const calendar = document.getElementById('diary-calendar');
+            if (!calendar) return;
+            
+            const today = new Date();
+            const year = today.getFullYear();
+            const month = today.getMonth();
+            
+            const firstDay = new Date(year, month, 1);
+            const lastDay = new Date(year, month + 1, 0);
+            const daysInMonth = lastDay.getDate();
+            const startingDayOfWeek = firstDay.getDay();
+            
+            let calendarHTML = `
+                <div class="text-center mb-4">
+                    <h4 class="text-lg font-semibold text-gray-800">${year}年${month + 1}月</h4>
+                </div>
+                <div class="grid grid-cols-7 gap-1 text-center text-sm">
+                    <div class="p-2 font-medium text-gray-600">日</div>
+                    <div class="p-2 font-medium text-gray-600">一</div>
+                    <div class="p-2 font-medium text-gray-600">二</div>
+                    <div class="p-2 font-medium text-gray-600">三</div>
+                    <div class="p-2 font-medium text-gray-600">四</div>
+                    <div class="p-2 font-medium text-gray-600">五</div>
+                    <div class="p-2 font-medium text-gray-600">六</div>
+            `;
+            
+            // Empty cells for days before the first day of the month
+            for (let i = 0; i < startingDayOfWeek; i++) {
+                calendarHTML += '<div class="p-2"></div>';
+            }
+            
+            // Days of the month
+            for (let day = 1; day <= daysInMonth; day++) {
+                const date = new Date(year, month, day);
+                const dateString = date.toISOString().split('T')[0];
+                const hasDiary = allDiaries.some(d => d.date === dateString);
+                const isSelected = dateString === selectedDate;
+                
+                let classes = 'calendar-day p-2 rounded cursor-pointer';
+                if (hasDiary) classes += ' has-diary';
+                if (isSelected) classes += ' selected';
+                
+                calendarHTML += `
+                    <div class="${classes}" onclick="selectDate('${dateString}')">
+                        ${day}
+                        ${hasDiary ? '<div class="w-2 h-2 bg-orange-500 rounded-full mx-auto mt-1"></div>' : ''}
+                    </div>
+                `;
+            }
+            
+            calendarHTML += '</div>';
+            calendar.innerHTML = calendarHTML;
+        }
+
+        // Select date
+        function selectDate(dateString) {
+            selectedDate = dateString;
+            document.getElementById('diary-date').value = dateString;
+            renderCalendar();
+            loadExistingDiary();
+        }
+
+        // Render recent diaries
+        function renderRecentDiaries() {
+            const container = document.getElementById('recent-diaries');
+            if (!container) return;
+            
+            const recentDiaries = allDiaries
+                .sort((a, b) => new Date(b.date) - new Date(a.date))
+                .slice(0, 5);
+            
+            if (recentDiaries.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center py-8 text-gray-500">
+                        <svg class="w-12 h-12 mx-auto mb-3 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path>
+                        </svg>
+                        <p>还没有日记记录</p>
+                        <p class="text-sm mt-2">开始写下你的第一篇日记吧！</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            container.innerHTML = recentDiaries.map(diary => `
+                <div class="diary-entry p-4 bg-white rounded-lg border border-gray-100 hover:shadow-md transition-shadow">
+                    <div class="flex justify-between items-start mb-3">
+                        <div class="flex items-center">
+                            <span class="text-lg mr-2">${getMoodEmoji(diary.mood)}</span>
+                            <div>
+                                <div class="font-medium text-gray-800">${formatDate(diary.date)}</div>
+                                <div class="text-sm text-gray-500">心情 ${diary.mood}/5 • ${diary.wordCount}字</div>
+                            </div>
+                        </div>
+                        <div class="flex space-x-2">
+                            <button onclick="editDiary('${diary.id}')" class="text-blue-600 hover:text-blue-800 text-sm">
+                                编辑
+                            </button>
+                            <button onclick="deleteDiary('${diary.id}')" class="text-red-600 hover:text-red-800 text-sm">
+                                删除
+                            </button>
+                        </div>
+                    </div>
+                    <div class="diary-content text-gray-700 text-sm leading-relaxed line-clamp-3">
+                        ${diary.content.substring(0, 150)}${diary.content.length > 150 ? '...' : ''}
+                    </div>
+                    <div class="mt-2 flex flex-wrap gap-1">
+                        ${diary.keywords.map(keyword => `
+                            <span class="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">${keyword}</span>
+                        `).join('')}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Initialize mood chart
+        function initializeMoodChart() {
+            const chartContainer = document.getElementById('mood-chart');
+            if (!chartContainer) return;
+            
+            moodChart = echarts.init(chartContainer);
+            updateMoodChart();
+        }
+
+        // Update mood chart
+        function updateMoodChart() {
+            if (!moodChart) return;
+            
+            const last30Days = [];
+            const moodData = [];
+            
+            for (let i = 29; i >= 0; i--) {
+                const date = new Date();
+                date.setDate(date.getDate() - i);
+                const dateString = date.toISOString().split('T')[0];
+                
+                last30Days.push(date.getDate().toString());
+                
+                const diary = allDiaries.find(d => d.date === dateString);
+                moodData.push(diary ? diary.mood : null);
+            }
+            
+            const option = {
+                tooltip: {
+                    trigger: 'axis',
+                    formatter: function(params) {
+                        const data = params[0];
+                        if (data.value === null) return '无日记记录';
+                        return `${data.name}日: 心情 ${data.value}/5`;
+                    }
+                },
+                xAxis: {
+                    type: 'category',
+                    data: last30Days,
+                    axisLine: {
+                        lineStyle: {
+                            color: '#666'
+                        }
+                    }
+                },
+                yAxis: {
+                    type: 'value',
+                    min: 1,
+                    max: 5,
+                    axisLine: {
+                        lineStyle: {
+                            color: '#666'
+                        }
+                    }
+                },
+                series: [{
+                    data: moodData,
+                    type: 'line',
+                    smooth: true,
+                    lineStyle: {
+                        color: '#ff69b4',
+                        width: 3
+                    },
+                    itemStyle: {
+                        color: '#ff69b4'
+                    },
+                    areaStyle: {
+                        color: {
+                            type: 'linear',
+                            x: 0,
+                            y: 0,
+                            x2: 0,
+                            y2: 1,
+                            colorStops: [{
+                                offset: 0, color: 'rgba(255, 105, 180, 0.3)'
+                            }, {
+                                offset: 1, color: 'rgba(255, 105, 180, 0.1)'
+                            }]
+                        }
+                    }
+                }]
+            };
+            
+            moodChart.setOption(option);
+        }
+
+        // Create floating hearts
+        function createFloatingHearts() {
+            const container = document.getElementById('floating-hearts');
+            
+            for (let i = 0; i < 5; i++) {
+                setTimeout(() => {
+                    const heart = document.createElement('div');
+                    heart.className = 'heart';
+                    heart.innerHTML = '💖';
+                    heart.style.left = Math.random() * window.innerWidth + 'px';
+                    heart.style.top = window.innerHeight + 'px';
+                    
+                    container.appendChild(heart);
+                    
+                    setTimeout(() => {
+                        container.removeChild(heart);
+                    }, 3000);
+                }, i * 200);
+            }
+        }
+
+        // Utility functions
+        function getMoodEmoji(mood) {
+            const emojis = ['', '😢', '😐', '🙂', '😊', '😄'];
+            return emojis[mood] || '😐';
+        }
+
+        function formatDate(dateString) {
+            const date = new Date(dateString);
+            const today = new Date();
+            const yesterday = new Date(today);
+            yesterday.setDate(yesterday.getDate() - 1);
+            
+            if (date.toDateString() === today.toDateString()) {
+                return '今天';
+            } else if (date.toDateString() === yesterday.toDateString()) {
+                return '昨天';
+            } else {
+                return date.toLocaleDateString('zh-CN');
+            }
+        }
+
+        function generateId() {
+            return Date.now().toString(36) + Math.random().toString(36).substr(2);
+        }
+
+        function showNotification(message, type = 'success') {
+            const notification = document.getElementById('notification');
+            const notificationText = document.getElementById('notification-text');
+            
+            if (notification && notificationText) {
+                notificationText.textContent = message;
+                notification.style.transform = 'translateX(0)';
+                
+                setTimeout(() => {
+                    notification.style.transform = 'translateX(100%)';
+                }, 3000);
+            }
+        }
+
+        function editDiary(id) {
+            const diary = allDiaries.find(d => d.id === id);
+            if (!diary) return;
+            
+            selectDate(diary.date);
+        }
+
+        function deleteDiary(id) {
+            if (!confirm('确定要删除这篇日记吗？')) return;
+            
+            allDiaries = allDiaries.filter(d => d.id !== id);
+            localStorage.setItem('diaries', JSON.stringify(allDiaries));
+            
+            updateStatistics();
+            renderCalendar();
+            renderRecentDiaries();
+            updateMoodChart();
+            
+            showNotification('日记已删除', 'success');
+        }
+
+        function loadAllDiaries() {
+            // This would open a full diary list view
+            showNotification('功能开发中...', 'info');
+        }
+
+        // Resize chart on window resize
+        window.addEventListener('resize', () => {
+            if (moodChart) {
+                moodChart.resize();
+            }
+        });
+    </script>
+</body>
+</html>

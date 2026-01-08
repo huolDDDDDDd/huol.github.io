@@ -1,0 +1,967 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>记账记录 - 智能记账日记</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@splidejs/splide@4.1.4/dist/js/splide.min.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/@splidejs/splide@4.1.4/dist/css/splide.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;700&family=Noto+Sans+SC:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #2C3E50;
+            --secondary-color: #3498DB;
+            --accent-color: #27AE60;
+            --warning-color: #F39C12;
+            --bg-light: #F8F9FA;
+        }
+        
+        body {
+            font-family: 'Noto Sans SC', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        
+        .glass-card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+        
+        .gradient-text {
+            background: linear-gradient(135deg, var(--secondary-color), var(--accent-color));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .hover-lift {
+            transition: all 0.3s ease;
+        }
+        
+        .hover-lift:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 24px rgba(0, 0, 0, 0.15);
+        }
+        
+        .filter-chip {
+            transition: all 0.2s ease;
+        }
+        
+        .filter-chip:hover {
+            transform: scale(1.02);
+        }
+        
+        .filter-chip.active {
+            background: var(--secondary-color);
+            color: white;
+        }
+        
+        .transaction-row {
+            transition: all 0.2s ease;
+        }
+        
+        .transaction-row:hover {
+            background-color: #f8f9fa;
+            transform: translateX(4px);
+        }
+        
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(4px);
+        }
+        
+        .modal.show {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .modal-content {
+            background: white;
+            border-radius: 16px;
+            padding: 24px;
+            max-width: 500px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+            transform: scale(0.7);
+            opacity: 0;
+            transition: all 0.3s ease;
+        }
+        
+        .modal.show .modal-content {
+            transform: scale(1);
+            opacity: 1;
+        }
+        
+        .scroll-reveal {
+            opacity: 0;
+            transform: translateY(30px);
+            transition: all 0.6s ease;
+        }
+        
+        .scroll-reveal.revealed {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        
+        .stats-card {
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.05));
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+    </style>
+</head>
+<body class="overflow-x-hidden">
+    <!-- Navigation -->
+    <nav class="fixed top-0 w-full z-50 glass-card">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16">
+                <div class="flex items-center">
+                    <div class="flex-shrink-0">
+                        <h1 class="text-xl font-bold gradient-text">💰 智能记账</h1>
+                    </div>
+                </div>
+                <div class="hidden md:block">
+                    <div class="ml-10 flex items-baseline space-x-4">
+                        <a href="index.html" class="px-3 py-2 rounded-md text-sm font-medium text-gray-700 hover:text-blue-600 hover:bg-gray-100 transition-colors">首页</a>
+                        <a href="accounting.html" class="px-3 py-2 rounded-md text-sm font-medium text-white bg-blue-500">记账</a>
+                        <a href="diary.html" class="px-3 py-2 rounded-md text-sm font-medium text-gray-700 hover:text-blue-600 hover:bg-gray-100 transition-colors">日记</a>
+                        <a href="analytics.html" class="px-3 py-2 rounded-md text-sm font-medium text-gray-700 hover:text-blue-600 hover:bg-gray-100 transition-colors">分析</a>
+                    </div>
+                </div>
+                <div class="md:hidden">
+                    <button id="mobile-menu-btn" class="text-gray-700 hover:text-blue-600">
+                        <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+        <!-- Mobile menu -->
+        <div id="mobile-menu" class="md:hidden hidden">
+            <div class="px-2 pt-2 pb-3 space-y-1 sm:px-3 bg-white border-t">
+                <a href="index.html" class="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-blue-600">首页</a>
+                <a href="accounting.html" class="block px-3 py-2 rounded-md text-base font-medium text-white bg-blue-500">记账</a>
+                <a href="diary.html" class="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-blue-600">日记</a>
+                <a href="analytics.html" class="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-blue-600">分析</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Header Section -->
+    <section class="pt-24 pb-8">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-8 scroll-reveal">
+                <h1 class="text-3xl md:text-4xl font-bold text-white mb-4">记账记录</h1>
+                <p class="text-xl text-gray-200">管理您的所有财务记录</p>
+            </div>
+            
+            <!-- Stats Cards -->
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+                <div class="stats-card rounded-2xl p-6 text-center hover-lift scroll-reveal">
+                    <div class="text-3xl mb-3">📊</div>
+                    <h3 class="text-lg font-semibold text-white mb-2">总记录数</h3>
+                    <p class="text-2xl font-bold text-blue-300" id="total-count">0</p>
+                </div>
+                <div class="stats-card rounded-2xl p-6 text-center hover-lift scroll-reveal">
+                    <div class="text-3xl mb-3">💰</div>
+                    <h3 class="text-lg font-semibold text-white mb-2">总收入</h3>
+                    <p class="text-2xl font-bold text-green-300" id="total-income">¥0</p>
+                </div>
+                <div class="stats-card rounded-2xl p-6 text-center hover-lift scroll-reveal">
+                    <div class="text-3xl mb-3">💸</div>
+                    <h3 class="text-lg font-semibold text-white mb-2">总支出</h3>
+                    <p class="text-2xl font-bold text-red-300" id="total-expense">¥0</p>
+                </div>
+                <div class="stats-card rounded-2xl p-6 text-center hover-lift scroll-reveal">
+                    <div class="text-3xl mb-3">📈</div>
+                    <h3 class="text-lg font-semibold text-white mb-2">净余额</h3>
+                    <p class="text-2xl font-bold text-yellow-300" id="total-balance">¥0</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Filters and Search -->
+    <section class="py-8">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="glass-card rounded-2xl p-8 scroll-reveal">
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    <!-- Search -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-3">搜索记录</label>
+                        <div class="relative">
+                            <input 
+                                type="text" 
+                                id="search-input" 
+                                placeholder="搜索描述、金额、分类..."
+                                class="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            >
+                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center">
+                                <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                                </svg>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Date Range -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-3">时间范围</label>
+                        <select id="date-range" class="w-full py-3 px-4 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                            <option value="all">全部时间</option>
+                            <option value="today">今天</option>
+                            <option value="week">本周</option>
+                            <option value="month">本月</option>
+                            <option value="year">今年</option>
+                        </select>
+                    </div>
+
+                    <!-- Transaction Type -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-3">交易类型</label>
+                        <div class="flex space-x-2">
+                            <button class="filter-chip flex-1 py-2 px-4 rounded-lg border-2 border-gray-200 text-sm font-medium active" data-type="all">
+                                全部
+                            </button>
+                            <button class="filter-chip flex-1 py-2 px-4 rounded-lg border-2 border-gray-200 text-sm font-medium" data-type="income">
+                                收入
+                            </button>
+                            <button class="filter-chip flex-1 py-2 px-4 rounded-lg border-2 border-gray-200 text-sm font-medium" data-type="expense">
+                                支出
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Category Filter -->
+                <div class="mt-6">
+                    <label class="block text-sm font-medium text-gray-700 mb-3">分类筛选</label>
+                    <div class="flex flex-wrap gap-2" id="category-filters">
+                        <button class="filter-chip py-2 px-4 rounded-lg border-2 border-gray-200 text-sm font-medium active" data-category="all">
+                            全部分类
+                        </button>
+                        <!-- Other category filters will be populated by JavaScript -->
+                    </div>
+                </div>
+
+                <!-- Actions -->
+                <div class="mt-6 flex flex-col sm:flex-row gap-4">
+                    <button onclick="exportData()" class="flex-1 bg-green-500 text-white py-3 rounded-lg font-semibold hover:bg-green-600 transition-colors">
+                        导出数据
+                    </button>
+                    <button onclick="clearAllFilters()" class="flex-1 bg-gray-500 text-white py-3 rounded-lg font-semibold hover:bg-gray-600 transition-colors">
+                        清除筛选
+                    </button>
+                    <button onclick="showAddModal()" class="flex-1 bg-blue-500 text-white py-3 rounded-lg font-semibold hover:bg-blue-600 transition-colors">
+                        添加记录
+                    </button>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Transactions List -->
+    <section class="py-8">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="glass-card rounded-2xl p-8 scroll-reveal">
+                <div class="flex justify-between items-center mb-6">
+                    <h3 class="text-xl font-semibold text-gray-800">交易记录</h3>
+                    <div class="flex items-center space-x-4">
+                        <span class="text-sm text-gray-500">共 <span id="filtered-count">0</span> 条记录</span>
+                        <select id="sort-by" class="text-sm border border-gray-200 rounded px-3 py-1 focus:ring-2 focus:ring-blue-500">
+                            <option value="date-desc">按日期降序</option>
+                            <option value="date-asc">按日期升序</option>
+                            <option value="amount-desc">按金额降序</option>
+                            <option value="amount-asc">按金额升序</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div id="transactions-list" class="space-y-3">
+                    <!-- Transactions will be populated by JavaScript -->
+                </div>
+                
+                <!-- Pagination -->
+                <div id="pagination" class="mt-8 flex justify-center">
+                    <!-- Pagination will be populated by JavaScript -->
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Add/Edit Transaction Modal -->
+    <div id="transaction-modal" class="modal">
+        <div class="modal-content">
+            <div class="flex justify-between items-center mb-6">
+                <h3 id="modal-title" class="text-xl font-semibold text-gray-800">添加记录</h3>
+                <button onclick="closeModal()" class="text-gray-400 hover:text-gray-600">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+            
+            <form id="transaction-form" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">类型</label>
+                    <div class="flex space-x-4">
+                        <label class="flex items-center">
+                            <input type="radio" name="type" value="expense" checked class="mr-2">
+                            <span>支出</span>
+                        </label>
+                        <label class="flex items-center">
+                            <input type="radio" name="type" value="income" class="mr-2">
+                            <span>收入</span>
+                        </label>
+                    </div>
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">金额</label>
+                    <input type="number" name="amount" step="0.01" required 
+                           class="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                           placeholder="请输入金额">
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">分类</label>
+                    <select name="category" required 
+                            class="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            id="category-select">
+                        <!-- Options will be populated by JavaScript -->
+                    </select>
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">日期</label>
+                    <input type="date" name="date" required 
+                           class="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">描述</label>
+                    <input type="text" name="description" required 
+                           class="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                           placeholder="请输入描述">
+                </div>
+                
+                <div class="flex space-x-4 pt-4">
+                    <button type="submit" class="flex-1 bg-blue-500 text-white py-3 rounded-lg font-semibold hover:bg-blue-600 transition-colors">
+                        保存
+                    </button>
+                    <button type="button" onclick="closeModal()" class="flex-1 bg-gray-500 text-white py-3 rounded-lg font-semibold hover:bg-gray-600 transition-colors">
+                        取消
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="py-8 border-t border-white/20">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center">
+                <p class="text-gray-300">&copy; 2026 智能记账日记. 让财务管理变得简单、智能、有趣.</p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Notification -->
+    <div id="notification" class="fixed top-20 right-4 z-50 transform translate-x-full transition-transform duration-300">
+        <div class="bg-white rounded-lg shadow-lg p-4 min-w-80">
+            <div class="flex items-center">
+                <div class="flex-shrink-0">
+                    <svg class="h-5 w-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                    </svg>
+                </div>
+                <div class="ml-3">
+                    <p id="notification-text" class="text-sm font-medium text-gray-900"></p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Accounting Page JavaScript
+        let allTransactions = [];
+        let filteredTransactions = [];
+        let currentPage = 1;
+        let itemsPerPage = 20;
+        let editingTransaction = null;
+
+        // Initialize page
+        document.addEventListener('DOMContentLoaded', function() {
+            initializePage();
+        });
+
+        function initializePage() {
+            setupMobileMenu();
+            setupScrollReveal();
+            loadTransactions();
+            setupFilters();
+            setupCategoryFilters();
+            updateStatistics();
+            renderTransactions();
+            
+            // Set default date to today
+            const today = new Date().toISOString().split('T')[0];
+            const dateInput = document.querySelector('input[name="date"]');
+            if (dateInput) {
+                dateInput.value = today;
+            }
+        }
+
+        // Mobile menu setup
+        function setupMobileMenu() {
+            const mobileMenuBtn = document.getElementById('mobile-menu-btn');
+            const mobileMenu = document.getElementById('mobile-menu');
+            
+            if (mobileMenuBtn && mobileMenu) {
+                mobileMenuBtn.addEventListener('click', () => {
+                    mobileMenu.classList.toggle('hidden');
+                });
+            }
+        }
+
+        // Scroll reveal animation
+        function setupScrollReveal() {
+            const observerOptions = {
+                threshold: 0.1,
+                rootMargin: '0px 0px -50px 0px'
+            };
+            
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        entry.target.classList.add('revealed');
+                    }
+                });
+            }, observerOptions);
+            
+            document.querySelectorAll('.scroll-reveal').forEach(el => {
+                observer.observe(el);
+            });
+        }
+
+        // Load transactions from localStorage
+        function loadTransactions() {
+            const stored = localStorage.getItem('transactions');
+            allTransactions = stored ? JSON.parse(stored) : [];
+            filteredTransactions = [...allTransactions];
+        }
+
+        // Setup filter event listeners
+        function setupFilters() {
+            const searchInput = document.getElementById('search-input');
+            const dateRange = document.getElementById('date-range');
+            const sortBy = document.getElementById('sort-by');
+            const typeButtons = document.querySelectorAll('[data-type]');
+
+            if (searchInput) {
+                searchInput.addEventListener('input', debounce(applyFilters, 300));
+            }
+            if (dateRange) {
+                dateRange.addEventListener('change', applyFilters);
+            }
+            if (sortBy) {
+                sortBy.addEventListener('change', applyFilters);
+            }
+
+            typeButtons.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    typeButtons.forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    applyFilters();
+                });
+            });
+        }
+
+        // Setup category filters
+        function setupCategoryFilters() {
+            const categoryFilters = document.getElementById('category-filters');
+            if (!categoryFilters) return;
+
+            // Add expense categories
+            const expenseCategories = [
+                { id: 'food', name: '餐饮', icon: '🍽️' },
+                { id: 'transport', name: '交通', icon: '🚗' },
+                { id: 'shopping', name: '购物', icon: '🛍️' },
+                { id: 'entertainment', name: '娱乐', icon: '🎬' },
+                { id: 'health', name: '医疗', icon: '🏥' },
+                { id: 'education', name: '教育', icon: '📚' },
+                { id: 'housing', name: '居住', icon: '🏠' },
+                { id: 'other', name: '其他', icon: '📝' }
+            ];
+
+            expenseCategories.forEach(category => {
+                const btn = document.createElement('button');
+                btn.className = 'filter-chip py-2 px-4 rounded-lg border-2 border-gray-200 text-sm font-medium';
+                btn.setAttribute('data-category', category.id);
+                btn.innerHTML = `${category.icon} ${category.name}`;
+                btn.addEventListener('click', () => {
+                    document.querySelectorAll('[data-category]').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    applyFilters();
+                });
+                categoryFilters.appendChild(btn);
+            });
+        }
+
+        // Apply filters
+        function applyFilters() {
+            const searchTerm = document.getElementById('search-input')?.value.toLowerCase() || '';
+            const dateRange = document.getElementById('date-range')?.value || 'all';
+            const typeFilter = document.querySelector('[data-type].active')?.getAttribute('data-type') || 'all';
+            const categoryFilter = document.querySelector('[data-category].active')?.getAttribute('data-category') || 'all';
+            const sortBy = document.getElementById('sort-by')?.value || 'date-desc';
+
+            // Filter by search term
+            let filtered = allTransactions.filter(t => {
+                return t.description.toLowerCase().includes(searchTerm) ||
+                       t.categoryName.toLowerCase().includes(searchTerm) ||
+                       t.amount.toString().includes(searchTerm);
+            });
+
+            // Filter by date range
+            if (dateRange !== 'all') {
+                const now = new Date();
+                const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+                
+                filtered = filtered.filter(t => {
+                    const transactionDate = new Date(t.date);
+                    switch (dateRange) {
+                        case 'today':
+                            return transactionDate.getTime() === today.getTime();
+                        case 'week':
+                            const weekStart = new Date(today);
+                            weekStart.setDate(today.getDate() - today.getDay());
+                            return transactionDate >= weekStart;
+                        case 'month':
+                            return transactionDate.getFullYear() === today.getFullYear() &&
+                                   transactionDate.getMonth() === today.getMonth();
+                        case 'year':
+                            return transactionDate.getFullYear() === today.getFullYear();
+                        default:
+                            return true;
+                    }
+                });
+            }
+
+            // Filter by type
+            if (typeFilter !== 'all') {
+                filtered = filtered.filter(t => t.type === typeFilter);
+            }
+
+            // Filter by category
+            if (categoryFilter !== 'all') {
+                filtered = filtered.filter(t => t.category === categoryFilter);
+            }
+
+            // Sort
+            filtered.sort((a, b) => {
+                switch (sortBy) {
+                    case 'date-desc':
+                        return new Date(b.date) - new Date(a.date);
+                    case 'date-asc':
+                        return new Date(a.date) - new Date(b.date);
+                    case 'amount-desc':
+                        return b.amount - a.amount;
+                    case 'amount-asc':
+                        return a.amount - b.amount;
+                    default:
+                        return 0;
+                }
+            });
+
+            filteredTransactions = filtered;
+            currentPage = 1;
+            renderTransactions();
+            updateFilteredCount();
+        }
+
+        // Update statistics
+        function updateStatistics() {
+            let totalIncome = 0;
+            let totalExpense = 0;
+
+            allTransactions.forEach(t => {
+                if (t.type === 'income') {
+                    totalIncome += t.amount;
+                } else {
+                    totalExpense += t.amount;
+                }
+            });
+
+            const totalBalance = totalIncome - totalExpense;
+
+            document.getElementById('total-count').textContent = allTransactions.length;
+            document.getElementById('total-income').textContent = `¥${totalIncome.toFixed(2)}`;
+            document.getElementById('total-expense').textContent = `¥${totalExpense.toFixed(2)}`;
+            document.getElementById('total-balance').textContent = `¥${totalBalance.toFixed(2)}`;
+        }
+
+        // Update filtered count
+        function updateFilteredCount() {
+            document.getElementById('filtered-count').textContent = filteredTransactions.length;
+        }
+
+        // Render transactions
+        function renderTransactions() {
+            const container = document.getElementById('transactions-list');
+            if (!container) return;
+
+            const startIndex = (currentPage - 1) * itemsPerPage;
+            const endIndex = startIndex + itemsPerPage;
+            const pageTransactions = filteredTransactions.slice(startIndex, endIndex);
+
+            if (pageTransactions.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center py-12 text-gray-500">
+                        <svg class="w-16 h-16 mx-auto mb-4 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+                        </svg>
+                        <p class="text-lg">暂无符合条件的记录</p>
+                        <p class="text-sm mt-2">尝试调整筛选条件或添加新的记录</p>
+                    </div>
+                `;
+                document.getElementById('pagination').innerHTML = '';
+                return;
+            }
+
+            container.innerHTML = pageTransactions.map(transaction => `
+                <div class="transaction-row flex items-center justify-between p-4 bg-white rounded-lg border border-gray-100">
+                    <div class="flex items-center">
+                        <div class="w-12 h-12 rounded-full flex items-center justify-center text-xl mr-4" style="background-color: ${getCategoryColor(transaction.category)}">
+                            ${transaction.categoryIcon}
+                        </div>
+                        <div>
+                            <div class="font-medium text-gray-800">${transaction.description}</div>
+                            <div class="text-sm text-gray-500">${formatDate(transaction.date)} • ${transaction.categoryName}</div>
+                        </div>
+                    </div>
+                    <div class="flex items-center space-x-3">
+                        <div class="text-right">
+                            <div class="font-semibold ${transaction.type === 'income' ? 'text-green-600' : 'text-red-600'}">
+                                ${transaction.type === 'income' ? '+' : '-'}¥${transaction.amount.toFixed(2)}
+                            </div>
+                        </div>
+                        <div class="flex space-x-2">
+                            <button onclick="editTransaction('${transaction.id}')" class="text-blue-600 hover:text-blue-800 p-1">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                                </svg>
+                            </button>
+                            <button onclick="deleteTransaction('${transaction.id}')" class="text-red-600 hover:text-red-800 p-1">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+
+            renderPagination();
+        }
+
+        // Render pagination
+        function renderPagination() {
+            const pagination = document.getElementById('pagination');
+            if (!pagination) return;
+
+            const totalPages = Math.ceil(filteredTransactions.length / itemsPerPage);
+            
+            if (totalPages <= 1) {
+                pagination.innerHTML = '';
+                return;
+            }
+
+            let paginationHTML = '';
+            
+            // Previous button
+            if (currentPage > 1) {
+                paginationHTML += `<button onclick="changePage(${currentPage - 1})" class="px-3 py-2 mx-1 bg-white border border-gray-200 rounded hover:bg-gray-50">上一页</button>`;
+            }
+
+            // Page numbers
+            for (let i = 1; i <= totalPages; i++) {
+                if (i === currentPage) {
+                    paginationHTML += `<button class="px-3 py-2 mx-1 bg-blue-500 text-white rounded">${i}</button>`;
+                } else if (Math.abs(i - currentPage) <= 2 || i === 1 || i === totalPages) {
+                    paginationHTML += `<button onclick="changePage(${i})" class="px-3 py-2 mx-1 bg-white border border-gray-200 rounded hover:bg-gray-50">${i}</button>`;
+                } else if (Math.abs(i - currentPage) === 3) {
+                    paginationHTML += `<span class="px-3 py-2 mx-1">...</span>`;
+                }
+            }
+
+            // Next button
+            if (currentPage < totalPages) {
+                paginationHTML += `<button onclick="changePage(${currentPage + 1})" class="px-3 py-2 mx-1 bg-white border border-gray-200 rounded hover:bg-gray-50">下一页</button>`;
+            }
+
+            pagination.innerHTML = paginationHTML;
+        }
+
+        // Change page
+        function changePage(page) {
+            currentPage = page;
+            renderTransactions();
+        }
+
+        // Show add modal
+        function showAddModal() {
+            editingTransaction = null;
+            document.getElementById('modal-title').textContent = '添加记录';
+            document.getElementById('transaction-form').reset();
+            
+            // Set default date to today
+            const today = new Date().toISOString().split('T')[0];
+            document.querySelector('input[name="date"]').value = today;
+            
+            updateCategoryOptions();
+            showModal();
+        }
+
+        // Edit transaction
+        function editTransaction(id) {
+            const transaction = allTransactions.find(t => t.id === id);
+            if (!transaction) return;
+
+            editingTransaction = transaction;
+            document.getElementById('modal-title').textContent = '编辑记录';
+            
+            // Fill form
+            document.querySelector(`input[name="type"][value="${transaction.type}"]`).checked = true;
+            document.querySelector('input[name="amount"]').value = transaction.amount;
+            document.querySelector('input[name="date"]').value = transaction.date;
+            document.querySelector('input[name="description"]').value = transaction.description;
+            
+            updateCategoryOptions();
+            document.querySelector('select[name="category"]').value = transaction.category;
+            
+            showModal();
+        }
+
+        // Delete transaction
+        function deleteTransaction(id) {
+            if (!confirm('确定要删除这条记录吗？')) return;
+
+            allTransactions = allTransactions.filter(t => t.id !== id);
+            localStorage.setItem('transactions', JSON.stringify(allTransactions));
+            
+            applyFilters();
+            updateStatistics();
+            showNotification('记录已删除', 'success');
+        }
+
+        // Update category options based on type
+        function updateCategoryOptions() {
+            const type = document.querySelector('input[name="type"]:checked').value;
+            const categorySelect = document.getElementById('category-select');
+            
+            const categories = type === 'income' ? [
+                { id: 'salary', name: '工资', icon: '💼' },
+                { id: 'bonus', name: '奖金', icon: '🎁' },
+                { id: 'investment', name: '投资', icon: '📈' },
+                { id: 'other_income', name: '其他', icon: '💰' }
+            ] : [
+                { id: 'food', name: '餐饮', icon: '🍽️' },
+                { id: 'transport', name: '交通', icon: '🚗' },
+                { id: 'shopping', name: '购物', icon: '🛍️' },
+                { id: 'entertainment', name: '娱乐', icon: '🎬' },
+                { id: 'health', name: '医疗', icon: '🏥' },
+                { id: 'education', name: '教育', icon: '📚' },
+                { id: 'housing', name: '居住', icon: '🏠' },
+                { id: 'other', name: '其他', icon: '📝' }
+            ];
+
+            categorySelect.innerHTML = categories.map(cat => 
+                `<option value="${cat.id}">${cat.icon} ${cat.name}</option>`
+            ).join('');
+        }
+
+        // Show modal
+        function showModal() {
+            const modal = document.getElementById('transaction-modal');
+            modal.classList.add('show');
+        }
+
+        // Close modal
+        function closeModal() {
+            const modal = document.getElementById('transaction-modal');
+            modal.classList.remove('show');
+        }
+
+        // Form submission
+        document.getElementById('transaction-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(e.target);
+            const transactionData = {
+                id: editingTransaction ? editingTransaction.id : generateId(),
+                date: formData.get('date'),
+                amount: parseFloat(formData.get('amount')),
+                type: formData.get('type'),
+                category: formData.get('category'),
+                description: formData.get('description'),
+                createdAt: editingTransaction ? editingTransaction.createdAt : new Date().toISOString()
+            };
+
+            // Add category info
+            const categories = transactionData.type === 'income' ? [
+                { id: 'salary', name: '工资', icon: '💼', color: '#27AE60' },
+                { id: 'bonus', name: '奖金', icon: '🎁', color: '#E74C3C' },
+                { id: 'investment', name: '投资', icon: '📈', color: '#3498DB' },
+                { id: 'other_income', name: '其他', icon: '💰', color: '#F39C12' }
+            ] : [
+                { id: 'food', name: '餐饮', icon: '🍽️', color: '#FF6B6B' },
+                { id: 'transport', name: '交通', icon: '🚗', color: '#4ECDC4' },
+                { id: 'shopping', name: '购物', icon: '🛍️', color: '#45B7D1' },
+                { id: 'entertainment', name: '娱乐', icon: '🎬', color: '#96CEB4' },
+                { id: 'health', name: '医疗', icon: '🏥', color: '#FFEAA7' },
+                { id: 'education', name: '教育', icon: '📚', color: '#DDA0DD' },
+                { id: 'housing', name: '居住', icon: '🏠', color: '#98D8C8' },
+                { id: 'other', name: '其他', icon: '📝', color: '#F7DC6F' }
+            ];
+
+            const category = categories.find(c => c.id === transactionData.category);
+            if (category) {
+                transactionData.categoryName = category.name;
+                transactionData.categoryIcon = category.icon;
+            }
+
+            if (editingTransaction) {
+                // Update existing transaction
+                const index = allTransactions.findIndex(t => t.id === editingTransaction.id);
+                allTransactions[index] = transactionData;
+            } else {
+                // Add new transaction
+                allTransactions.unshift(transactionData);
+            }
+
+            localStorage.setItem('transactions', JSON.stringify(allTransactions));
+            
+            closeModal();
+            applyFilters();
+            updateStatistics();
+            showNotification(editingTransaction ? '记录已更新' : '记录已添加', 'success');
+        });
+
+        // Clear all filters
+        function clearAllFilters() {
+            document.getElementById('search-input').value = '';
+            document.getElementById('date-range').value = 'all';
+            document.querySelector('[data-type="all"]').click();
+            document.querySelector('[data-category="all"]').click();
+            document.getElementById('sort-by').value = 'date-desc';
+            applyFilters();
+        }
+
+        // Export data
+        function exportData() {
+            const data = {
+                transactions: allTransactions,
+                exportDate: new Date().toISOString(),
+                totalRecords: allTransactions.length
+            };
+
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `记账记录_${new Date().toISOString().split('T')[0]}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+
+            showNotification('数据导出成功', 'success');
+        }
+
+        // Utility functions
+        function getCategoryColor(categoryId) {
+            const allCategories = [
+                { id: 'food', color: '#FF6B6B' },
+                { id: 'transport', color: '#4ECDC4' },
+                { id: 'shopping', color: '#45B7D1' },
+                { id: 'entertainment', color: '#96CEB4' },
+                { id: 'health', color: '#FFEAA7' },
+                { id: 'education', color: '#DDA0DD' },
+                { id: 'housing', color: '#98D8C8' },
+                { id: 'other', color: '#F7DC6F' },
+                { id: 'salary', color: '#27AE60' },
+                { id: 'bonus', color: '#E74C3C' },
+                { id: 'investment', color: '#3498DB' },
+                { id: 'other_income', color: '#F39C12' }
+            ];
+            const category = allCategories.find(c => c.id === categoryId);
+            return category ? category.color + '20' : '#F0F0F0';
+        }
+
+        function formatDate(dateString) {
+            const date = new Date(dateString);
+            const today = new Date();
+            const yesterday = new Date(today);
+            yesterday.setDate(yesterday.getDate() - 1);
+            
+            if (date.toDateString() === today.toDateString()) {
+                return '今天';
+            } else if (date.toDateString() === yesterday.toDateString()) {
+                return '昨天';
+            } else {
+                return date.toLocaleDateString('zh-CN');
+            }
+        }
+
+        function generateId() {
+            return Date.now().toString(36) + Math.random().toString(36).substr(2);
+        }
+
+        function showNotification(message, type = 'success') {
+            const notification = document.getElementById('notification');
+            const notificationText = document.getElementById('notification-text');
+            
+            if (notification && notificationText) {
+                notificationText.textContent = message;
+                notification.style.transform = 'translateX(0)';
+                
+                setTimeout(() => {
+                    notification.style.transform = 'translateX(100%)';
+                }, 3000);
+            }
+        }
+
+        function debounce(func, wait) {
+            let timeout;
+            return function executedFunction(...args) {
+                const later = () => {
+                    clearTimeout(timeout);
+                    func(...args);
+                };
+                clearTimeout(timeout);
+                timeout = setTimeout(later, wait);
+            };
+        }
+
+        // Type change event
+        document.querySelectorAll('input[name="type"]').forEach(radio => {
+            radio.addEventListener('change', updateCategoryOptions);
+        });
+    </script>
+</body>
+</html>
